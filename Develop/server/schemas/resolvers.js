@@ -4,12 +4,12 @@ const { signToken } = require("../utils/auth");
 
 const resolvers = {
   Query: {
-    user: async (parent, args, context) => {
+    me: async (parent, args, context) => {
       if (context.user) {
         const userData = await User.findOne({ _id: context.user._id }).populate("books");
         return userData;
       }
-      // throw new AuthenticationError("You must be logged in!");
+      throw new AuthenticationError("You must be logged in!");
     },
   },
   Mutation: {
@@ -34,6 +34,27 @@ const resolvers = {
         return updatedUser;
       }
       throw new AuthenticationError("You must be logged in to delete books!");
+    },
+    login: async (parent, { email, password }) => {
+      const user = await User.findOne({ email });
+      if (!user) {
+        throw new AuthenticationError("Incorrect login credentials!");
+      }
+
+      const correctPW = await user.isCorrectPassword(password);
+      if (!correctPW) {
+        throw new AuthenticationError("Incorrect login credentials!");
+      }
+
+      const token = signToken(user);
+      return { token, user };
+    },
+
+    addUser: async (parent, args) => {
+      const user = await User.create(args);
+      const token = signToken(user);
+
+      return { token, user };
     },
   },
 };
